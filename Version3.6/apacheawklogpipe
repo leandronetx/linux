@@ -1,0 +1,52 @@
+#!/bin/gawk -f
+
+BEGIN {
+        months["Jan"] = "01";
+        months["Feb"] = "02";
+        months["Mar"] = "03";
+        months["Apr"] = "04";
+        months["May"] = "05";
+        months["Jun"] = "06";
+        months["Jul"] = "07";
+        months["Aug"] = "08";
+        months["Sep"] = "09";
+        months["Oct"] = "10";
+        months["Nov"] = "11";
+        months["Dec"] = "12";
+}
+
+{
+        # HEADS UP: SET THIS!!!!
+        LOGBASE="/var/log/httpd/access"
+
+        SSL=""
+
+        # Automagicly set first 
+        SITE=tolower($1);
+        PORT=$2
+
+        if ($2 == 443)
+        {
+                SSL="-ssl"
+        }
+
+        # Extract all but first two fields (vhostname vhostport to be exactly) into LINE
+        LINE=substr($0,index($0,$3));
+
+        # No matter where it is, we will find an apache datestamp.
+        match(LINE,/\[[0-9]+\/[A-Z][a-z]+\/[0-9]+:[0-9]+:[0-9]+:[0-9]+[\t ]+[+-][0-9]+\]/);
+        split(substr(LINE,RSTART + 1,RLENGTH - 2), ap_log_time, /[\/: ]/);
+
+        #ap_rotatelog= LOGBASE "/" SITE ":" PORT "/access-log" SSL "-" ap_log_time[3] "-" months[ap_log_time[2]] ap_log_time[1];
+        ap_rotatelog= LOGBASE "/" SITE  "/access_log" SSL;
+        if (system("test -d " LOGBASE "/" SITE ) == 0)
+        {
+                print LINE >> ap_rotatelog;
+                close(ap_rotatelog);
+        }
+        else
+        {
+                print SITE "\t" SSL "\t" LINE >> LOGBASE "/w3logrotate-access.log";
+                close(LOGBASE "/w3logrotate-access.log");
+        }
+}
